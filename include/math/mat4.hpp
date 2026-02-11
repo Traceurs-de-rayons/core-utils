@@ -2,24 +2,87 @@
 
 #include "math/vec4.hpp"
 
+#if defined(__SSE__)
+#include <immintrin.h>
+#endif
+
 namespace cu::math {
 
-struct mat4 {
+struct alignas(16) mat4
+{
+#if defined(__SSE__)
+	union {
+		float  m[4][4];
+		__m128 row[4];
+	};
+#else
 	float m[4][4];
+#endif
 
 	mat4(float diag = 0.0f)
 	{
+	#if defined(__SSE__)
+		row[0] = _mm_set_ps(0, 0, 0, diag);
+		row[1] = _mm_set_ps(0, 0, diag, 0);
+		row[2] = _mm_set_ps(0, diag, 0, 0);
+		row[3] = _mm_set_ps(diag, 0, 0, 0);
+	#else
 		m[0][0] = diag; m[0][1] = 0.0f; m[0][2] = 0.0f; m[0][3] = 0.0f;
 		m[1][0] = 0.0f; m[1][1] = diag; m[1][2] = 0.0f; m[1][3] = 0.0f;
 		m[2][0] = 0.0f; m[2][1] = 0.0f; m[2][2] = diag; m[2][3] = 0.0f;
 		m[3][0] = 0.0f; m[3][1] = 0.0f; m[3][2] = 0.0f; m[3][3] = diag;
+	#endif
 	}
 
 	static inline mat4 identity() { return mat4(1.0f); }
 
-	// mat4 * mat4
+	/**
+	 * mat4 * mat4
+	 * https://en.wikipedia.org/wiki/Matrix_multiplication
+	 * https://i.sstatic.net/iRxxe.png
+	 */
 	inline mat4 operator*(const mat4& o) const
 	{
+	#if defined(__SSE__)
+		mat4 r;
+
+		__m128 b0 = o.row[0];
+		__m128 b1 = o.row[1];
+		__m128 b2 = o.row[2];
+		__m128 b3 = o.row[3];
+
+		for (int i = 0; i < 4; ++i)
+		{
+			__m128 a = row[i];
+
+			__m128 a0 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(0,0,0,0));
+			__m128 a1 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(1,1,1,1));
+			__m128 a2 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(2,2,2,2));
+			__m128 a3 = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3,3,3,3));
+
+		#if defined(__FMA__)
+			__m128 result =
+				_mm_fmadd_ps(a0, b0,
+				_mm_fmadd_ps(a1, b1,
+				_mm_fmadd_ps(a2, b2,
+				_mm_mul_ps(a3, b3))));
+		#else
+			__m128 result =
+				_mm_add_ps(
+					_mm_add_ps(
+						_mm_mul_ps(a0, b0),
+						_mm_mul_ps(a1, b1)),
+					_mm_add_ps(
+						_mm_mul_ps(a2, b2),
+						_mm_mul_ps(a3, b3)));
+		#endif
+
+			r.row[i] = result;
+		}
+
+		return r;
+
+	#else
 		mat4 r(0.0f);
 
 		const float a00 = m[0][0], a01 = m[0][1], a02 = m[0][2], a03 = m[0][3];
@@ -53,31 +116,74 @@ struct mat4 {
 		r.m[3][3] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
 
 		return r;
+	#endif
 	}
 
-	// mat4 * vec4
-	inline vec4 operator*(const vec4& v) const
+	/**
+	 * vec4 * mat4
+	 * https://en.wikipedia.org/wiki/Matrix_multiplication
+	 * https://thebookofshaders.com/08/matrixes.png
+	 */
+	inline vec4 mul_vec(const vec4& v) const
 	{
+	#if defined(__SSE__)
+		__m128 vx = _mm_shuffle_ps(v.v, v.v, _MM_SHUFFLE(0,0,0,0));
+		__m128 vy = _mm_shuffle_ps(v.v, v.v, _MM_SHUFFLE(1,1,1,1));
+		__m128 vz = _mm_shuffle_ps(v.v, v.v, _MM_SHUFFLE(2,2,2,2));
+		__m128 vw = _mm_shuffle_ps(v.v, v.v, _MM_SHUFFLE(3,3,3,3));
+
+	#if defined(__FMA__)
+		__m128 result =
+			_mm_fmadd_ps(vx, row[0],
+			_mm_fmadd_ps(vy, row[1],
+			_mm_fmadd_ps(vz, row[2],
+			_mm_mul_ps(vw, row[3]))));
+	#else
+		__m128 result =
+			_mm_add_ps(
+				_mm_add_ps(
+					_mm_mul_ps(vx, row[0]),
+					_mm_mul_ps(vy, row[1])),
+				_mm_add_ps(
+					_mm_mul_ps(vz, row[2]),
+					_mm_mul_ps(vw, row[3])));
+	#endif
+
+		vec4 out;
+		out.v = result;
+		return out;
+	#else
 		vec4 r;
 		r.x = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3] * v.w;
 		r.y = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3] * v.w;
 		r.z = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3] * v.w;
 		r.w = m[3][0] * v.x + m[3][1] * v.y + m[3][2] * v.z + m[3][3] * v.w;
 		return r;
+	#endif
 	}
 
-	inline mat4 operator*(const float scalar) const
+	/**
+	 * float * mat4
+	 * https://en.wikipedia.org/wiki/Matrix_multiplication
+	 */
+	inline mat4 operator*(float s) const
 	{
 		mat4 r;
 
-		r.m[0][0] = m[0][0] * scalar; r.m[0][1] = m[0][1] * scalar; r.m[0][2] = m[0][2] * scalar; r.m[0][3] = m[0][3] * scalar;
-		r.m[1][0] = m[1][0] * scalar; r.m[1][1] = m[1][1] * scalar; r.m[1][2] = m[1][2] * scalar; r.m[1][3] = m[1][3] * scalar;
-		r.m[2][0] = m[2][0] * scalar; r.m[2][1] = m[2][1] * scalar; r.m[2][2] = m[2][2] * scalar; r.m[2][3] = m[2][3] * scalar;
-		r.m[3][0] = m[3][0] * scalar; r.m[3][1] = m[3][1] * scalar; r.m[3][2] = m[3][2] * scalar; r.m[3][3] = m[3][3] * scalar;
-
+	#if defined(__SSE__)
+		__m128 scalar = _mm_set1_ps(s);
+		r.row[0] = _mm_mul_ps(row[0], scalar);
+		r.row[1] = _mm_mul_ps(row[1], scalar);
+		r.row[2] = _mm_mul_ps(row[2], scalar);
+		r.row[3] = _mm_mul_ps(row[3], scalar);
+	#else
+		r.m[0][0] = m[0][0] * s; r.m[0][1] = m[0][1] * s; r.m[0][2] = m[0][2] * s; r.m[0][3] = m[0][3] * s;
+		r.m[1][0] = m[1][0] * s; r.m[1][1] = m[1][1] * s; r.m[1][2] = m[1][2] * s; r.m[1][3] = m[1][3] * s;
+		r.m[2][0] = m[2][0] * s; r.m[2][1] = m[2][1] * s; r.m[2][2] = m[2][2] * s; r.m[2][3] = m[2][3] * s;
+		r.m[3][0] = m[3][0] * s; r.m[3][1] = m[3][1] * s; r.m[3][2] = m[3][2] * s; r.m[3][3] = m[3][3] * s;
+	#endif
 		return r;
 	}
-
 };
 
 }
