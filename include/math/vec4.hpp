@@ -49,6 +49,7 @@ struct alignas(16) vec4
 	}
 
 	inline float length() const { return std::sqrt(dot(*this, *this)); }
+	inline float length_sq() const { return dot(*this, *this); }
 	inline vec4 normalized() const { float l = length(); return l > 0 ? *this / l : *this; }
 
 	#else
@@ -71,6 +72,7 @@ struct alignas(16) vec4
 	static inline float dot(const vec4& a, const vec4& b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
 
 	inline float length() const { return std::sqrt(x * x + y * y + z * z + w * w); }
+	inline float length_sq() const { return x * x + y * y + z * z + w * w; }
 	inline vec4 normalized() const { float l = length(); return l > 0 ? *this / l : *this; }
 
 #endif

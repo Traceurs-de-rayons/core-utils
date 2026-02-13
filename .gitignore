@@ -46,4 +46,4 @@ build/
 *.dwo
 
 
-test.cpp
+test*

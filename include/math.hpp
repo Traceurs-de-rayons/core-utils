@@ -8,6 +8,6 @@
 #include "math/vec4.hpp"
 
 #include "math/mat4.hpp"
+#include "math/quat.hpp"
 
 #include "math/transform.hpp"
-
