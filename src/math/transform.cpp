@@ -84,4 +84,40 @@ mat4 perspective(float fov_y, float aspect, float near, float far)
 	return m;
 }
 
+mat4 translate(const mat4& m, const vec3& v)
+{
+	mat4 r = m;
+	r.m[0][3] += v.x;
+	r.m[1][3] += v.y;
+	r.m[2][3] += v.z;
+	return r;
+}
+
+mat4 translate(const mat4& m, const vec4& v)
+{
+	mat4 r = m;
+	r.m[0][3] += v.x;
+	r.m[1][3] += v.y;
+	r.m[2][3] += v.z;
+	return r;
+}
+
+mat4 scale(const mat4& m, const vec3& v)
+{
+	mat4 r = m;
+	r.m[0][0] *= v.x;
+	r.m[1][1] *= v.y;
+	r.m[2][2] *= v.z;
+	return r;
+}
+
+mat4 scale(const mat4& m, const vec4& v)
+{
+	mat4 r = m;
+	r.m[0][0] *= v.x;
+	r.m[1][1] *= v.y;
+	r.m[2][2] *= v.z;
+	return r;
+}
+
 }
