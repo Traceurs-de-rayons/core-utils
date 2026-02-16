@@ -145,7 +145,7 @@ struct quat
 
 	static inline void toAxisAngle(const quat& q, vec3& axis, float& angle) {
 		quat normalized = q.normalized();
-		angle = 2.0f * std::acos(std::max(-1.0f, std::min(1.0f, normalized.w)));
+		angle = 2.0f * std::acos(std::fmax(-1.0f, std::fmin(1.0f, normalized.w)));
 		
 		float sin_half_angle = std::sin(angle * 0.5f);
 		if (sin_half_angle < 0.001f) {
