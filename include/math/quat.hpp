@@ -112,7 +112,7 @@ struct quat
 		float d = dot(qa, qb);
 
 		if (d < 0.0f) {
-			qb = -1 * qb.v;
+			qb = {-qb.w, -qb.x, -qb.y, -qb.z};
 			d = -d;
 		}
 

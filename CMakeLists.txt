@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(core-utils VERSION 0.1.0 LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -18,9 +18,15 @@ target_include_directories(core-utils
 	PUBLIC
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 		$<INSTALL_INTERFACE:include>
+	PRIVATE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
 
-target_compile_features(core-utils PUBLIC cxx_std_17)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	target_compile_options(core-utils PUBLIC -std=gnu++2b)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+	target_compile_options(core-utils PUBLIC /std:c++latest)
+endif()
 
 set_target_properties(core-utils PROPERTIES OUTPUT_NAME "core-utils")
 
