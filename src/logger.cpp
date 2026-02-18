@@ -1,4 +1,5 @@
 #include "logger.hpp"
+#include "colors.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -29,9 +30,9 @@ namespace cu::logger {
 	{
 		switch (lvl)
 		{
-			case INFO:  return "\033[32m[info]\033[0m";
-			case WARN:  return "\033[33m[warn]\033[0m";
-			case ERROR: return "\033[31m[error]\033[0m";
+			case INFO:  return COLOR_GREEN  "[info]"  COLOR_RESET;
+			case WARN:  return COLOR_YELLOW "[warn]"  COLOR_RESET;
+			case ERROR: return COLOR_RED    "[error]" COLOR_RESET;
 		}
 		return "[unknown]";
 	}
